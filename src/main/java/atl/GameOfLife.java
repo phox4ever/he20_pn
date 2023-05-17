@@ -1,208 +1,490 @@
 package atl;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinTask;
+import java.util.concurrent.RecursiveTask;
 
 import static java.lang.Thread.sleep;
 
 public class GameOfLife {
 
-    protected int[][] grid;
+    protected class Grid {
+        public int[][] grid;
+        public int x;
+        public int y;
 
-    public static void main(String[] args) throws InterruptedException {
-        int[][] grid = new int[30][50];
-        int[][] workingGrid = new int[30][50];
+        public Grid(int x, int y) {
+            this.x = x;
+            this.y = y;
+            this.grid = new int[x][y];
+        }
 
-        //oscillator
-        /*
-        grid[5][4] = 1;
-        grid[5][5] = 1;
-        grid[5][6] = 1;
-        */
+        public int getX() {
+            return x;
+        }
 
-        //glider
-        /*
-        grid[1][2] = 1;
-        grid[2][3] = 1;
-        grid[3][1] = 1;
-        grid[3][2] = 1;
-        grid[3][3] = 1;
-        */
+        public int getY() {
+            return y;
+        }
 
-        //pulsar
-        /*
-        grid[2][4] = 1;
-        grid[2][5] = 1;
-        grid[2][6] = 1;
-        grid[2][10] = 1;
-        grid[2][11] = 1;
-        grid[2][12] = 1;
-        grid[4][2] = 1;
-        grid[4][7] = 1;
-        grid[4][9] = 1;
-        grid[4][14] = 1;
-        grid[5][2] = 1;
-        grid[5][7] = 1;
-        grid[5][9] = 1;
-        grid[5][14] = 1;
-        grid[6][2] = 1;
-        grid[6][7] = 1;
-        grid[6][9] = 1;
-        grid[6][14] = 1;
-        grid[7][4] = 1;
-        grid[7][5] = 1;
-        grid[7][6] = 1;
-        grid[7][10] = 1;
-        grid[7][11] = 1;
-        grid[7][12] = 1;
-        grid[9][4] = 1;
-        grid[9][5] = 1;
-        grid[9][6] = 1;
-        grid[9][10] = 1;
-        grid[9][11] = 1;
-        grid[9][12] = 1;
-        grid[10][2] = 1;
-        grid[10][7] = 1;
-        grid[10][9] = 1;
-        grid[10][14] = 1;
-        grid[11][2] = 1;
-        grid[11][7] = 1;
-        grid[11][9] = 1;
-        grid[11][14] = 1;
-        grid[12][2] = 1;
-        grid[12][7] = 1;
-        grid[12][9] = 1;
-        grid[12][14] = 1;
-        grid[14][4] = 1;
-        grid[14][5] = 1;
-        grid[14][6] = 1;
-        grid[14][10] = 1;
-        grid[14][11] = 1;
-        grid[14][12] = 1;
-        */
+        public boolean isAlive(int x, int y) {
+            return grid[x][y] == 1;
+        }
 
-        //glider gun
-        grid[5][1] = 1;
-        grid[5][2] = 1;
-        grid[6][1] = 1;
-        grid[6][2] = 1;
-        grid[3][13] = 1;
-        grid[3][14] = 1;
-        grid[4][12] = 1;
-        grid[4][16] = 1;
-        grid[5][11] = 1;
-        grid[5][17] = 1;
-        grid[6][11] = 1;
-        grid[6][15] = 1;
-        grid[6][17] = 1;
-        grid[6][18] = 1;
-        grid[7][11] = 1;
-        grid[7][17] = 1;
-        grid[8][12] = 1;
-        grid[8][16] = 1;
-        grid[9][13] = 1;
-        grid[9][14] = 1;
-        grid[1][25] = 1;
-        grid[2][23] = 1;
-        grid[2][25] = 1;
-        grid[3][21] = 1;
-        grid[3][22] = 1;
-        grid[4][21] = 1;
-        grid[4][22] = 1;
-        grid[5][21] = 1;
-        grid[5][22] = 1;
-        grid[6][23] = 1;
-        grid[6][25] = 1;
-        grid[7][25] = 1;
-        grid[3][35] = 1;
-        grid[3][36] = 1;
-        grid[4][35] = 1;
-        grid[4][36] = 1;
+        public int[][] getGrid() {
+            return grid;
+        }
 
+        public void setGrid(int[][] grid) {
+            this.grid = grid;
+        }
 
-
-
-
-
-        GameOfLife game = new GameOfLife(grid);
-        game.drawGrid();
-        while (true) {
-            for (int i = 0; i < grid.length; i++) {
-                for (int j = 0; j < grid[0].length; j++) {
-                    workingGrid[i][j] = game.checkNeighbours(i, j) ? 1 : 0;
-                }
-            }
-            workingGrid = game.swapGrid(workingGrid);
-            game.drawGrid();
+        public int[][] swapGrid(int[][] grid) {
+            int[][] swap = this.grid;
+            this.grid = grid;
+            return swap;
         }
     }
 
-    public GameOfLife(int[][] grid) {
-        this.grid = grid;
+    protected class GridTask extends RecursiveTask {
+        protected int lowerBound;
+
+        protected int upperBound;
+
+        protected int granularity;
+
+        protected int[][] workingGrid;
+
+        protected List<GridTask> subtasks;
+
+        public GridTask(int lowerBound, int upperBound, int granularity, int[][] workingGrid) {
+            this.lowerBound = lowerBound;
+            this.upperBound = upperBound;
+            this.granularity = granularity;
+            this.workingGrid = workingGrid;
+        }
+
+        public GridTask(int upperBound, int[][] workingGrid) {
+            this(0, upperBound, 100, workingGrid);
+        }
+
+
+        public GridTask(int lowerBound, int upperBound, int[][] workingGrid) {
+            this(lowerBound, upperBound, 100, workingGrid);
+        }
+
+        private List<GridTask> subTasks() {
+            List<GridTask> subTasks = new ArrayList<>();
+
+            for (int i = 1; i <= this.upperBound / granularity; i++) {
+                int upper = i * granularity - 1;
+                int lower = (upper - granularity + 1);
+                subTasks.add(new GridTask(lower, upper, workingGrid));
+            }
+            if (this.upperBound % granularity != 0) {
+                subTasks.add(new GridTask((this.upperBound / granularity) * granularity, this.upperBound, workingGrid));
+            }
+            return subTasks;
+        }
+
+        protected int[][] updateGrid(int lowerBound, int upperBound) {
+            for (int i = lowerBound; i <= upperBound; i++) {
+                for (int j = 0; j < grid.getY(); j++) {
+                    workingGrid[i][j] = checkNeighbours(i, j) ? 1 : 0;
+                }
+            }
+            return workingGrid;
+        }
+
+        public int[][] getWorkingGrid() {
+            return workingGrid;
+        }
+
+        @Override
+        protected Object compute() {
+            if (((upperBound + 1) - lowerBound) > granularity) {
+                ForkJoinTask.invokeAll(subTasks());
+            } else {
+                return updateGrid(lowerBound, upperBound);
+            }
+            return getWorkingGrid();
+        }
     }
 
-    public int[][] getGrid() {
+    protected class Canvas {
+        protected int x;
+        protected int y;
+        protected int xMax;
+        protected int yMax;
+        protected int generation;
+        protected long timePerGeneration;
+        protected long timeTotal;
+        protected int alive;
+        protected boolean dead;
+
+
+        public Canvas(int x, int y, int xMax, int yMax) {
+            this.x = x;
+            this.y = y;
+            this.xMax = xMax;
+            this.yMax = yMax;
+            this.generation = 0;
+            this.timePerGeneration = 0;
+            this.timeTotal = 0;
+            this.alive = 0;
+            this.dead = false;
+        }
+
+        public int getX() {
+            return x;
+        }
+
+        public void setX(int x) {
+            this.x = x;
+        }
+
+        public int getY() {
+            return y;
+        }
+
+        public void setY(int y) {
+            this.y = y;
+        }
+
+        public int getxMax() {
+            return xMax;
+        }
+
+        public void setxMax(int xMax) {
+            this.xMax = xMax;
+        }
+
+        public int getyMax() {
+            return yMax;
+        }
+
+        public void setyMax(int yMax) {
+            this.yMax = yMax;
+        }
+
+        public int getGeneration() {
+            return generation;
+        }
+
+        public void setGeneration(int generation) {
+            this.generation = generation;
+        }
+
+        public long getTimePerGeneration() {
+            return timePerGeneration;
+        }
+
+        public void setTimePerGeneration(long timePerGeneration) {
+            this.timePerGeneration = timePerGeneration;
+        }
+
+        public long getTimeTotal() {
+            return timeTotal;
+        }
+
+        public void setTimeTotal(long timeTotal) {
+            this.timeTotal = timeTotal;
+        }
+
+        public int getAlive() {
+            return alive;
+        }
+
+        public void setAlive(int alive) {
+            this.alive = alive;
+        }
+
+        public boolean isDead() {
+            return dead;
+        }
+
+        public void setDead(boolean dead) {
+            this.dead = dead;
+        }
+    }
+
+    final int TERMINAL_WIDTH = 156;
+    final int TERMINAL_HEIGHT = 38;
+    protected Grid grid;
+
+    protected ForkJoinPool pool = new ForkJoinPool();
+
+    protected List<GridTask> tasks;
+
+    protected StringBuffer buffer;
+
+    protected int renderInterval = 1;
+
+    protected int sleepInterval = 100;
+
+    protected boolean highRes = true;
+
+
+    public static void main(String[] args) throws InterruptedException {
+
+        //GameOfLife game = new GameOfLife(60, 240);
+        if (args.length != 4) {
+            System.out.println("Usage: java GameOfLife <x> <y> <renderInterval> <sleepInterval>");
+            System.exit(1);
+        }
+        GameOfLife game = new GameOfLife(Integer.parseInt(args[0]), Integer.parseInt(args[1]), Integer.parseInt(args[2]), Integer.parseInt(args[3]));
+        game.run();
+
+    }
+
+    public GameOfLife(int x, int y) {
+        this.grid = new Grid(x, y);
+        grid.swapGrid(initGrid(grid.getGrid()));
+    }
+
+    public GameOfLife(int x, int y, int renderInterval, int sleepInterval) {
+        this(x, y);
+        this.renderInterval = renderInterval;
+        this.sleepInterval = sleepInterval;
+    }
+
+    static int[][] initGrid(int[][] grid) {
+        spawnPulsar(grid, 0, 0);
+        spawnPulsar(grid, 0, 80);
+        spawnPulsar(grid, 20, 0);
+        spawnPulsar(grid, 20, 80);
+        spawnPulsar(grid, 40, 0);
+        spawnPulsar(grid, 40, 80);
+        spawnGliderGun(grid, 0, 20);
+        grid = mirrorGrid(grid);
+        grid = moveGrid(grid, 0, 120);
+
+
+        spawnPulsar(grid, 0, 0);
+        spawnPulsar(grid, 0, 80);
+        spawnPulsar(grid, 20, 0);
+        spawnPulsar(grid, 20, 80);
+        spawnPulsar(grid, 40, 0);
+        spawnPulsar(grid, 40, 80);
+        spawnGliderGun(grid, 0, 20);
         return grid;
     }
 
-    public void setGrid(int[][] grid) {
-        this.grid = grid;
-    }
 
-    public int[][] swapGrid(int[][] grid) {
-        int[][] swap = this.grid;
-        this.grid = grid;
-        return swap;
-    }
-
-    public void drawGrid() {
-        clearConsole();
-        for (int[] row : grid) {
-            for (int cell : row) {
-                System.out.print(cell == 1 ? "\u2588\u2588" : "  ");
+    public void run() throws InterruptedException {
+        int[][] workingGrid = new int[grid.getX()][grid.getY()];
+        int generation = 0;
+        int alive;
+        int kill = 0;
+        long start = System.nanoTime();
+        long time = start;
+        long averageTimePerGeneration = 0;
+        Canvas canvas = new Canvas(0, 0, TERMINAL_HEIGHT * 2 - 2, TERMINAL_WIDTH * 2);
+        do {
+            alive = countAlive();
+            if (renderInterval > 0 && generation % renderInterval == 0) {
+                canvas.setGeneration(generation);
+                canvas.setTimePerGeneration(averageTimePerGeneration);
+                canvas.setTimeTotal((int) ((System.nanoTime() - start) / 1000000L));
+                canvas.setAlive(alive);
+                drawGrid(canvas);
             }
-            System.out.println();
-        }
+            time = System.nanoTime();
+
+            ForkJoinPool pool = ForkJoinPool.commonPool();
+            workingGrid = (int[][]) pool.invoke(new GridTask(0, grid.getX(), grid.getX() / 10, workingGrid));
+            workingGrid = grid.swapGrid(workingGrid);
+            averageTimePerGeneration = (averageTimePerGeneration * generation + (System.nanoTime() - time) / 1000L) / (generation + 1);
+            try {
+                Thread.sleep(sleepInterval);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            generation++;
+            if (alive == countAlive()) {
+                kill++;
+            } else {
+                kill = 0;
+            }
+        } while (kill < 10);
+        canvas.setDead(true);
+        drawGrid(canvas);
     }
 
-    public boolean isAlive(int x, int y) {
-        return grid[x][y] == 1;
+
+    private int countAlive() {
+        int count = 0;
+        for (int[] row : grid.getGrid()) {
+            for (int cell : row) {
+                count += cell;
+            }
+        }
+        return count;
     }
+
+    public StringBuffer renderLowRes() {
+        int count = 0;
+        for (int[] row : grid.getGrid()) {
+            for (int cell : row) {
+                buffer.append(cell == 1 ? "\u2588\u2588" : "  ");
+            }
+            if (count < grid.getX() - 1) {
+                buffer.append("\n");
+            }
+        }
+        return buffer;
+    }
+
+    public StringBuffer renderHighRes(int x, int y, int maxX, int maxY) {
+        int[][] grid = this.grid.getGrid();
+        for (int i = 0; i < this.grid.getX(); i = i + 2) {
+            if (i<x || i>=maxX) {
+                continue;
+            }
+            for (int j = 0; j < this.grid.getY(); j = j + 2) {
+                if (j<y || j>=maxY) {
+                    continue;
+                }
+                //▖	▗	▘	▙	▚	▛	▜	▝	▞	▟
+                char c = ' ';
+                //top left: ▘
+                if (grid[i][j] == 1 && grid[i + 1][j] + grid[i + 1][j + 1] + grid[i][j + 1] == 0) {
+                    c = '\u2598';
+                }
+                //top right: ▝
+                if (grid[i][j + 1] == 1 && grid[i + 1][j] + grid[i + 1][j + 1] + grid[i][j] == 0) {
+                    c = '\u259D';
+                }
+                //bottom left: ▖
+                if (grid[i + 1][j] == 1 && grid[i][j] + grid[i][j + 1] + grid[i + 1][j + 1] == 0) {
+                    c = '\u2596';
+                }
+                //bottom right: ▗
+                if (grid[i + 1][j + 1] == 1 && grid[i][j] + grid[i + 1][j] + grid[i][j + 1] == 0) {
+                    c = '\u2597';
+                }
+                //top: ▀
+                if (grid[i][j] + grid[i][j + 1] == 2 && grid[i + 1][j] + grid[i + 1][j + 1] == 0) {
+                    c = '\u2580';
+                }
+                //bottom: ▄
+                if (grid[i + 1][j] + grid[i + 1][j + 1] == 2 && grid[i][j] + grid[i][j + 1] == 0) {
+                    c = '\u2584';
+                }
+                //left: ▌
+                if (grid[i][j] + grid[i + 1][j] == 2 && grid[i][j + 1] + grid[i + 1][j + 1] == 0) {
+                    c = '\u258C';
+                }
+                //right: ▐
+                if (grid[i][j + 1] + grid[i + 1][j + 1] == 2 && grid[i][j] + grid[i + 1][j] == 0) {
+                    c = '\u2590';
+                }
+                //middle: █
+                if (grid[i][j] + grid[i + 1][j] + grid[i][j + 1] + grid[i + 1][j + 1] == 4) {
+                    c = '\u2588';
+                }
+                //top left corner: ▛
+                if (grid[i][j] + grid[i][j + 1] + grid[i + 1][j] == 3 && grid[i + 1][j + 1] == 0) {
+                    c = '\u259B';
+                }
+                //top right corner: ▜
+                if (grid[i][j] + grid[i][j + 1] + grid[i + 1][j + 1] == 3 && grid[i + 1][j] == 0) {
+                    c = '\u259C';
+                }
+                //bottom left corner: ▙
+                if (grid[i][j] + grid[i + 1][j] + grid[i + 1][j + 1] == 3 && grid[i][j + 1] == 0) {
+                    c = '\u2599';
+                }
+                //bottom right corner: ▟
+                if (grid[i][j + 1] + grid[i + 1][j] + grid[i + 1][j + 1] == 3 && grid[i][j] == 0) {
+                    c = '\u259F';
+                }
+                //upper left and lower right: ▚
+                if (grid[i][j] + grid[i + 1][j + 1] == 2 && grid[i][j + 1] + grid[i + 1][j] == 0) {
+                    c = '\u259A';
+                }
+                //upper right and lower left: ▞
+                if (grid[i][j + 1] + grid[i + 1][j] == 2 && grid[i][j] + grid[i + 1][j + 1] == 0) {
+                    c = '\u259E';
+                }
+                buffer.append(c);
+            }
+            if (i < maxX - 2) {
+                buffer.append("\n");
+            }
+        }
+        return buffer;
+    }
+
+    public void drawGrid(Canvas canvas) {
+        if (buffer == null) {
+            buffer = new StringBuffer();
+        } else {
+            buffer.delete(0, buffer.length());
+        }
+        buffer.append("\033[H\033[3J");
+        if (highRes) {
+            buffer = renderHighRes(canvas.getX(), canvas.getY(), canvas.getxMax(), canvas.getyMax());
+        } else {
+            buffer = renderLowRes();
+        }
+        buffer.append("\n\33[2K\r");
+        buffer.append("Alive: ")
+                .append(canvas.getAlive())
+                .append("  Generations: ")
+                .append(canvas.getGeneration())
+                .append(" (")
+                .append(canvas.getTimePerGeneration())
+                .append("μs/gen)  Time elapsed: ")
+                .append(canvas.getTimeTotal())
+                .append("ms");
+        if (canvas.isDead()) {
+            buffer.append("\n");
+            buffer.append("The grid is dead!");
+        }
+        System.out.print(buffer);
+    }
+
+   
 
     public boolean checkNeighbours(int x, int y) {
         int neighbours = 0;
         // top left
-        if (x > 0 && y > 0 && isAlive(x - 1, y - 1)) {
+        if (x > 0 && y > 0 && this.grid.isAlive(x - 1, y - 1)) {
             neighbours++;
         }
         // top
-        if (x > 0 && isAlive(x - 1, y)) {
+        if (x > 0 && this.grid.isAlive(x - 1, y)) {
             neighbours++;
         }
         // top right
-        if (x > 0 && y < grid[0].length - 1 && isAlive(x - 1, y + 1)) {
+        if (x > 0 && y < grid.getY() - 1 && this.grid.isAlive(x - 1, y + 1)) {
             neighbours++;
         }
         // left
-        if (y > 0 && isAlive(x, y - 1)) {
+        if (y > 0 && this.grid.isAlive(x, y - 1)) {
             neighbours++;
         }
         // right
-        if (y < grid[0].length - 1 && isAlive(x, y + 1)) {
+        if (y < grid.getY() - 1 && this.grid.isAlive(x, y + 1)) {
             neighbours++;
         }
         // bottom left
-        if (x < grid.length - 1 && y > 0 && isAlive(x + 1, y - 1)) {
+        if (x < grid.getX() - 1 && y > 0 && this.grid.isAlive(x + 1, y - 1)) {
             neighbours++;
         }
         // bottom
-        if (x < grid.length - 1 && isAlive(x + 1, y)) {
+        if (x < grid.getX() - 1 && this.grid.isAlive(x + 1, y)) {
             neighbours++;
         }
         // bottom right
-        if (x < grid.length - 1 && y < grid[0].length - 1 && isAlive(x + 1, y + 1)) {
+        if (x < grid.getX() - 1 && y < grid.getY() - 1 && this.grid.isAlive(x + 1, y + 1)) {
             neighbours++;
         }
-        if (isAlive(x, y)) {
+        if (this.grid.isAlive(x, y)) {
             return neighbours == 2 || neighbours == 3;
         } else {
             return neighbours == 3;
@@ -213,10 +495,132 @@ public class GameOfLife {
         try {
             if (System.getProperty("os.name").contains("Windows")) {
                 new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor();
-            }
-            else {
+            } else {
                 System.out.print("\033\143");
             }
-        } catch (IOException | InterruptedException ex) {}
+        } catch (IOException | InterruptedException ex) {
+        }
     }
+
+    public static void spawnOscillator(int[][] grid, int x, int y) {
+        grid[x + 1][y + 2] = 1;
+        grid[x + 2][y + 2] = 1;
+        grid[x + 3][y + 2] = 1;
+    }
+
+    public static void spawnGlider(int[][] grid, int x, int y) {
+        grid[x + 1][y + 2] = 1;
+        grid[x + 2][y + 3] = 1;
+        grid[x + 3][y + 1] = 1;
+        grid[x + 3][y + 2] = 1;
+        grid[x + 3][y + 3] = 1;
+    }
+
+    public static void spawnGliderGun(int[][] grid, int x, int y) {
+        grid[x + 5][y + 1] = 1;
+        grid[x + 5][y + 2] = 1;
+        grid[x + 6][y + 1] = 1;
+        grid[x + 6][y + 2] = 1;
+        grid[x + 3][y + 13] = 1;
+        grid[x + 3][y + 14] = 1;
+        grid[x + 4][y + 12] = 1;
+        grid[x + 4][y + 16] = 1;
+        grid[x + 5][y + 11] = 1;
+        grid[x + 5][y + 17] = 1;
+        grid[x + 6][y + 11] = 1;
+        grid[x + 6][y + 15] = 1;
+        grid[x + 6][y + 17] = 1;
+        grid[x + 6][y + 18] = 1;
+        grid[x + 7][y + 11] = 1;
+        grid[x + 7][y + 17] = 1;
+        grid[x + 8][y + 12] = 1;
+        grid[x + 8][y + 16] = 1;
+        grid[x + 9][y + 13] = 1;
+        grid[x + 9][y + 14] = 1;
+        grid[x + 1][y + 25] = 1;
+        grid[x + 2][y + 23] = 1;
+        grid[x + 2][y + 25] = 1;
+        grid[x + 3][y + 21] = 1;
+        grid[x + 3][y + 22] = 1;
+        grid[x + 4][y + 21] = 1;
+        grid[x + 4][y + 22] = 1;
+        grid[x + 5][y + 21] = 1;
+        grid[x + 5][y + 22] = 1;
+        grid[x + 6][y + 23] = 1;
+        grid[x + 6][y + 25] = 1;
+        grid[x + 7][y + 25] = 1;
+        grid[x + 3][y + 35] = 1;
+        grid[x + 3][y + 36] = 1;
+        grid[x + 4][y + 35] = 1;
+        grid[x + 4][y + 36] = 1;
+    }
+
+
+    public static void spawnPulsar(int[][] grid, int x, int y) {
+        grid[x + 2][y + 4] = 1;
+        grid[x + 2][y + 5] = 1;
+        grid[x + 2][y + 6] = 1;
+        grid[x + 2][y + 10] = 1;
+        grid[x + 2][y + 11] = 1;
+        grid[x + 2][y + 12] = 1;
+        grid[x + 4][y + 2] = 1;
+        grid[x + 4][y + 7] = 1;
+        grid[x + 4][y + 9] = 1;
+        grid[x + 4][y + 14] = 1;
+        grid[x + 5][y + 2] = 1;
+        grid[x + 5][y + 7] = 1;
+        grid[x + 5][y + 9] = 1;
+        grid[x + 5][y + 14] = 1;
+        grid[x + 6][y + 2] = 1;
+        grid[x + 6][y + 7] = 1;
+        grid[x + 6][y + 9] = 1;
+        grid[x + 6][y + 14] = 1;
+        grid[x + 7][y + 4] = 1;
+        grid[x + 7][y + 5] = 1;
+        grid[x + 7][y + 6] = 1;
+        grid[x + 7][y + 10] = 1;
+        grid[x + 7][y + 11] = 1;
+        grid[x + 7][y + 12] = 1;
+        grid[x + 9][y + 4] = 1;
+        grid[x + 9][y + 5] = 1;
+        grid[x + 9][y + 6] = 1;
+        grid[x + 9][y + 10] = 1;
+        grid[x + 9][y + 11] = 1;
+        grid[x + 9][y + 12] = 1;
+        grid[x + 10][y + 2] = 1;
+        grid[x + 10][y + 7] = 1;
+        grid[x + 10][y + 9] = 1;
+        grid[x + 10][y + 14] = 1;
+        grid[x + 11][y + 2] = 1;
+        grid[x + 11][y + 7] = 1;
+        grid[x + 11][y + 9] = 1;
+        grid[x + 11][y + 14] = 1;
+        grid[x + 12][y + 2] = 1;
+        grid[x + 12][y + 7] = 1;
+        grid[x + 12][y + 9] = 1;
+        grid[x + 12][y + 14] = 1;
+        grid[x + 14][y + 4] = 1;
+        grid[x + 14][y + 5] = 1;
+        grid[x + 14][y + 6] = 1;
+        grid[x + 14][y + 10] = 1;
+        grid[x + 14][y + 11] = 1;
+        grid[x + 14][y + 12] = 1;
+    }
+
+    public static int[][] mirrorGrid(int[][] grid) {
+        int[][] newGrid = new int[grid.length][grid[0].length];
+        for (int i = 0; i < grid.length; i++) {
+            newGrid[i] = grid[grid.length - 1 - i];
+        }
+        return newGrid;
+    }
+
+    public static int[][] moveGrid(int[][] grid, int x, int y) {
+        int[][] newGrid = new int[grid.length][grid[0].length];
+        for (int i = 0; i < grid.length - x; i++) {
+            if (grid[0].length - y >= 0) System.arraycopy(grid[i], 0, newGrid[i + x], y, grid[0].length - y);
+        }
+        return newGrid;
+    }
+
 }
