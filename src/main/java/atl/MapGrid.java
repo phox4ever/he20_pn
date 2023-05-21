@@ -5,14 +5,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 public class MapGrid implements Grid {
-    protected HashMap<Integer, int[]> grid;
+    protected ConcurrentMap<Integer, int[]> grid;
     protected int x;
     protected int y;
 
     public MapGrid(int x, int y) {
         this.x = x;
         this.y = y;
-        this.grid = new HashMap<>();
+        this.grid = new ConcurrentHashMap<>();
         for (int i = 0; i < x; i++) {
             grid.put(i, new int[y]);
         }
@@ -43,11 +43,11 @@ public class MapGrid implements Grid {
         arrayToMap(grid);
     }
 
-    public void setGridMap(HashMap<Integer, int[]> grid) {
+    public void setGridMap(ConcurrentMap<Integer, int[]> grid) {
         this.grid = grid;
     }
 
-    public HashMap<Integer, int[]> getGridMap() {
+    public ConcurrentMap<Integer, int[]> getGridMap() {
         return grid;
     }
 
@@ -58,7 +58,7 @@ public class MapGrid implements Grid {
 
     @Override
     public Grid swapGrid(Grid grid) {
-        HashMap<Integer, int[]> swap = this.grid;
+        ConcurrentMap<Integer, int[]> swap = this.grid;
         this.grid = ((MapGrid) grid).getGridMap();
         ((MapGrid) grid).setGridMap(swap);
         return grid;
@@ -83,8 +83,5 @@ public class MapGrid implements Grid {
         }
         return array;
     }
-
-
-
 
 }

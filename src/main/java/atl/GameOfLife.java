@@ -8,7 +8,7 @@ public class GameOfLife {
 
     final int TERMINAL_WIDTH = 156;
     final int TERMINAL_HEIGHT = 38;
-    final int THREADS = 1;
+
     protected Grid grid;
 
     protected ForkJoinPool pool = new ForkJoinPool();
@@ -21,31 +21,34 @@ public class GameOfLife {
 
     protected int sleepInterval = 100;
 
+    protected int threadCount = 4;
+
     protected boolean highRes = true;
 
 
     public static void main(String[] args) throws InterruptedException {
 
         //GameOfLife game = new GameOfLife(60, 240);
-        if (args.length != 4) {
-            System.out.println("Usage: java GameOfLife <x> <y> <renderInterval> <sleepInterval>");
+        if (args.length != 5) {
+            System.out.println("Usage: java GameOfLife <x> <y> <renderInterval> <sleepInterval> <threadCount>");
             System.exit(1);
         }
-        GameOfLife game = new GameOfLife(Integer.parseInt(args[0]), Integer.parseInt(args[1]), Integer.parseInt(args[2]), Integer.parseInt(args[3]));
+        GameOfLife game = new GameOfLife(Integer.parseInt(args[0]), Integer.parseInt(args[1]), Integer.parseInt(args[2]), Integer.parseInt(args[3]), Integer.parseInt(args[4]));
         game.run();
 
     }
 
     public GameOfLife(int x, int y) {
-        //this.grid = new ArrayGrid(x, y);
-        this.grid = new MapGrid(x, y);
+        this.grid = new ArrayGrid(x, y);
+        //this.grid = new MapGrid(x, y);
         grid.setGrid(initGrid(grid.getGrid()));
     }
 
-    public GameOfLife(int x, int y, int renderInterval, int sleepInterval) {
+    public GameOfLife(int x, int y, int renderInterval, int sleepInterval, int threadCount) {
         this(x, y);
         this.renderInterval = renderInterval;
         this.sleepInterval = sleepInterval;
+        this.threadCount = threadCount;
     }
 
     static int[][] initGrid(int[][] grid) {
@@ -72,8 +75,8 @@ public class GameOfLife {
 
 
     public void run() throws InterruptedException {
-        //Grid workingGrid = new ArrayGrid(grid.getX(), grid.getY());
-        Grid workingGrid = new MapGrid(grid.getX(), grid.getY());
+        Grid workingGrid = new ArrayGrid(grid.getX(), grid.getY());
+        //Grid workingGrid = new MapGrid(grid.getX(), grid.getY());
         int generation = 0;
         int alive;
         int kill = 0;
@@ -93,7 +96,7 @@ public class GameOfLife {
             time = System.nanoTime();
 
             ForkJoinPool pool = ForkJoinPool.commonPool();
-            workingGrid = (Grid) pool.invoke(new GridTask(this, 0, grid.getX(), grid.getX() / THREADS, workingGrid));
+            workingGrid = (Grid) pool.invoke(new GridTask(this, 0, grid.getX(), grid.getX() / threadCount, workingGrid));
             workingGrid = grid.swapGrid(workingGrid);
             averageTimePerGeneration = (averageTimePerGeneration * generation + (System.nanoTime() - time) / 1000L) / (generation + 1);
             try {
