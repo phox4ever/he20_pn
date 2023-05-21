@@ -1,218 +1,14 @@
 package atl;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ForkJoinTask;
-import java.util.concurrent.RecursiveTask;
-
-import static java.lang.Thread.sleep;
 
 public class GameOfLife {
 
-    protected class Grid {
-        public int[][] grid;
-        public int x;
-        public int y;
-
-        public Grid(int x, int y) {
-            this.x = x;
-            this.y = y;
-            this.grid = new int[x][y];
-        }
-
-        public int getX() {
-            return x;
-        }
-
-        public int getY() {
-            return y;
-        }
-
-        public boolean isAlive(int x, int y) {
-            return grid[x][y] == 1;
-        }
-
-        public int[][] getGrid() {
-            return grid;
-        }
-
-        public void setGrid(int[][] grid) {
-            this.grid = grid;
-        }
-
-        public int[][] swapGrid(int[][] grid) {
-            int[][] swap = this.grid;
-            this.grid = grid;
-            return swap;
-        }
-    }
-
-    protected class GridTask extends RecursiveTask {
-        protected int lowerBound;
-
-        protected int upperBound;
-
-        protected int granularity;
-
-        protected int[][] workingGrid;
-
-        protected List<GridTask> subtasks;
-
-        public GridTask(int lowerBound, int upperBound, int granularity, int[][] workingGrid) {
-            this.lowerBound = lowerBound;
-            this.upperBound = upperBound;
-            this.granularity = granularity;
-            this.workingGrid = workingGrid;
-        }
-
-        public GridTask(int upperBound, int[][] workingGrid) {
-            this(0, upperBound, 100, workingGrid);
-        }
-
-
-        public GridTask(int lowerBound, int upperBound, int[][] workingGrid) {
-            this(lowerBound, upperBound, 100, workingGrid);
-        }
-
-        private List<GridTask> subTasks() {
-            List<GridTask> subTasks = new ArrayList<>();
-
-            for (int i = 1; i <= this.upperBound / granularity; i++) {
-                int upper = i * granularity - 1;
-                int lower = (upper - granularity + 1);
-                subTasks.add(new GridTask(lower, upper, workingGrid));
-            }
-            if (this.upperBound % granularity != 0) {
-                subTasks.add(new GridTask((this.upperBound / granularity) * granularity, this.upperBound, workingGrid));
-            }
-            return subTasks;
-        }
-
-        protected int[][] updateGrid(int lowerBound, int upperBound) {
-            for (int i = lowerBound; i <= upperBound; i++) {
-                for (int j = 0; j < grid.getY(); j++) {
-                    workingGrid[i][j] = checkNeighbours(i, j) ? 1 : 0;
-                }
-            }
-            return workingGrid;
-        }
-
-        public int[][] getWorkingGrid() {
-            return workingGrid;
-        }
-
-        @Override
-        protected Object compute() {
-            if (((upperBound + 1) - lowerBound) > granularity) {
-                ForkJoinTask.invokeAll(subTasks());
-            } else {
-                return updateGrid(lowerBound, upperBound);
-            }
-            return getWorkingGrid();
-        }
-    }
-
-    protected class Canvas {
-        protected int x;
-        protected int y;
-        protected int xMax;
-        protected int yMax;
-        protected int generation;
-        protected long timePerGeneration;
-        protected long timeTotal;
-        protected int alive;
-        protected boolean dead;
-
-
-        public Canvas(int x, int y, int xMax, int yMax) {
-            this.x = x;
-            this.y = y;
-            this.xMax = xMax;
-            this.yMax = yMax;
-            this.generation = 0;
-            this.timePerGeneration = 0;
-            this.timeTotal = 0;
-            this.alive = 0;
-            this.dead = false;
-        }
-
-        public int getX() {
-            return x;
-        }
-
-        public void setX(int x) {
-            this.x = x;
-        }
-
-        public int getY() {
-            return y;
-        }
-
-        public void setY(int y) {
-            this.y = y;
-        }
-
-        public int getxMax() {
-            return xMax;
-        }
-
-        public void setxMax(int xMax) {
-            this.xMax = xMax;
-        }
-
-        public int getyMax() {
-            return yMax;
-        }
-
-        public void setyMax(int yMax) {
-            this.yMax = yMax;
-        }
-
-        public int getGeneration() {
-            return generation;
-        }
-
-        public void setGeneration(int generation) {
-            this.generation = generation;
-        }
-
-        public long getTimePerGeneration() {
-            return timePerGeneration;
-        }
-
-        public void setTimePerGeneration(long timePerGeneration) {
-            this.timePerGeneration = timePerGeneration;
-        }
-
-        public long getTimeTotal() {
-            return timeTotal;
-        }
-
-        public void setTimeTotal(long timeTotal) {
-            this.timeTotal = timeTotal;
-        }
-
-        public int getAlive() {
-            return alive;
-        }
-
-        public void setAlive(int alive) {
-            this.alive = alive;
-        }
-
-        public boolean isDead() {
-            return dead;
-        }
-
-        public void setDead(boolean dead) {
-            this.dead = dead;
-        }
-    }
-
     final int TERMINAL_WIDTH = 156;
     final int TERMINAL_HEIGHT = 38;
+    final int THREADS = 1;
     protected Grid grid;
 
     protected ForkJoinPool pool = new ForkJoinPool();
@@ -241,8 +37,9 @@ public class GameOfLife {
     }
 
     public GameOfLife(int x, int y) {
-        this.grid = new Grid(x, y);
-        grid.swapGrid(initGrid(grid.getGrid()));
+        //this.grid = new ArrayGrid(x, y);
+        this.grid = new MapGrid(x, y);
+        grid.setGrid(initGrid(grid.getGrid()));
     }
 
     public GameOfLife(int x, int y, int renderInterval, int sleepInterval) {
@@ -275,7 +72,8 @@ public class GameOfLife {
 
 
     public void run() throws InterruptedException {
-        int[][] workingGrid = new int[grid.getX()][grid.getY()];
+        //Grid workingGrid = new ArrayGrid(grid.getX(), grid.getY());
+        Grid workingGrid = new MapGrid(grid.getX(), grid.getY());
         int generation = 0;
         int alive;
         int kill = 0;
@@ -295,7 +93,7 @@ public class GameOfLife {
             time = System.nanoTime();
 
             ForkJoinPool pool = ForkJoinPool.commonPool();
-            workingGrid = (int[][]) pool.invoke(new GridTask(0, grid.getX(), grid.getX() / 10, workingGrid));
+            workingGrid = (Grid) pool.invoke(new GridTask(this, 0, grid.getX(), grid.getX() / THREADS, workingGrid));
             workingGrid = grid.swapGrid(workingGrid);
             averageTimePerGeneration = (averageTimePerGeneration * generation + (System.nanoTime() - time) / 1000L) / (generation + 1);
             try {
