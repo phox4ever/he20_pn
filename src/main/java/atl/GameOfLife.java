@@ -284,7 +284,7 @@ public class GameOfLife {
                 .append(canvas.getGeneration())
                 .append(" (")
                 .append(canvas.getTimePerGeneration())
-                .append("μs/gen)  Time elapsed: ")
+                .append("us/gen)  Time elapsed: ")
                 .append(canvas.getTimeTotal())
                 .append("ms");
         if (canvas.isDead()) {
