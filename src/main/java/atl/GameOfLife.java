@@ -6,7 +6,7 @@ import java.util.concurrent.ForkJoinPool;
 
 public class GameOfLife {
 
-    final int TERMINAL_WIDTH = 156;
+    final int TERMINAL_WIDTH = 140;
     final int TERMINAL_HEIGHT = 38;
 
     protected Grid grid;
@@ -23,12 +23,11 @@ public class GameOfLife {
 
     protected int threadCount = 4;
 
-    protected boolean highRes = true;
+    protected boolean highRes = false;
 
 
     public static void main(String[] args) throws InterruptedException {
 
-        //GameOfLife game = new GameOfLife(60, 240);
         if (args.length != 5) {
             System.out.println("Usage: java GameOfLife <x> <y> <renderInterval> <sleepInterval> <threadCount>");
             System.exit(1);
@@ -83,7 +82,8 @@ public class GameOfLife {
         long start = System.nanoTime();
         long time = start;
         long averageTimePerGeneration = 0;
-        Canvas canvas = new Canvas(0, 0, TERMINAL_HEIGHT * 2 - 2, TERMINAL_WIDTH * 2);
+        Canvas canvas = new Canvas(0, 0, TERMINAL_HEIGHT * 2 - 2, highRes ? TERMINAL_WIDTH * 2 : TERMINAL_WIDTH);
+        canvas.setThreadCount(threadCount);
         do {
             alive = countAlive();
             if (renderInterval > 0 && generation % renderInterval == 0) {
@@ -94,7 +94,6 @@ public class GameOfLife {
                 drawGrid(canvas);
             }
             time = System.nanoTime();
-
             ForkJoinPool pool = ForkJoinPool.commonPool();
             workingGrid = (Grid) pool.invoke(new GridTask(this, 0, grid.getX(), grid.getX() / threadCount, workingGrid));
             workingGrid = grid.swapGrid(workingGrid);
@@ -126,13 +125,56 @@ public class GameOfLife {
         return count;
     }
 
-    public StringBuffer renderLowRes() {
-        int count = 0;
+    public StringBuffer renderLowRes(int x, int y, int maxX, int maxY) {
+        int rows = 0;
+        int columns = 0;
         for (int[] row : grid.getGrid()) {
+            rows++;
+            if (rows < x || rows >= maxX) {
+                continue;
+            }
             for (int cell : row) {
+                columns++;
+                if (columns < y || columns >= maxY) {
+                    continue;
+                }
                 buffer.append(cell == 1 ? "\u2588\u2588" : "  ");
             }
-            if (count < grid.getX() - 1) {
+            if (rows < grid.getX() - 1) {
+                buffer.append("\n");
+            }
+        }
+        return buffer;
+    }
+
+    public StringBuffer renderMidRes(int x, int y, int maxX, int maxY) {
+        int[][] grid = this.grid.getGrid();
+        for (int i = 0; i < this.grid.getX(); i = i + 2) {
+            if (i<x || i>=maxX) {
+                continue;
+            }
+            for (int j = 0; j < this.grid.getY(); j++) {
+                if (j<y || j>=maxY) {
+                    continue;
+                }
+                //▀, ▄ or █
+                char c = ' ';
+
+                //top: ▀
+                if (grid[i][j] == 1 && grid[i + 1][j] == 0) {
+                    c = '\u2580';
+                }
+                //bottom: ▄
+                if (grid[i][j] == 0 && grid[i + 1][j] == 1) {
+                    c = '\u2584';
+                }
+                //middle: █
+                if (grid[i][j] + grid[i + 1][j] == 2) {
+                    c = '\u2588';
+                }
+                buffer.append(c);
+            }
+            if (i < maxX - 2) {
                 buffer.append("\n");
             }
         }
@@ -230,10 +272,13 @@ public class GameOfLife {
         if (highRes) {
             buffer = renderHighRes(canvas.getX(), canvas.getY(), canvas.getxMax(), canvas.getyMax());
         } else {
-            buffer = renderLowRes();
+            buffer = renderMidRes(canvas.getX(), canvas.getY(), canvas.getxMax(), canvas.getyMax());
         }
         buffer.append("\n\33[2K\r");
-        buffer.append("Alive: ")
+        buffer.append("Grid: ").append(grid.getX()).append("x").append(grid.getY())
+                .append(" (").append(canvas.getxMax()).append("x").append(canvas.getyMax()).append(")")
+                .append("  Threads: ").append(canvas.getThreadCount())
+                .append("  Alive: ")
                 .append(canvas.getAlive())
                 .append("  Generations: ")
                 .append(canvas.getGeneration())

@@ -11,6 +11,8 @@ class Canvas {
     protected int alive;
     protected boolean dead;
 
+    protected int threadCount;
+
 
     public Canvas(int x, int y, int xMax, int yMax) {
         this.x = x;
@@ -22,6 +24,7 @@ class Canvas {
         this.timeTotal = 0;
         this.alive = 0;
         this.dead = false;
+        this.threadCount = 1;
     }
 
     public int getX() {
@@ -94,5 +97,13 @@ class Canvas {
 
     public void setDead(boolean dead) {
         this.dead = dead;
+    }
+
+    public int getThreadCount() {
+        return threadCount;
+    }
+
+    public void setThreadCount(int threadCount) {
+        this.threadCount = threadCount;
     }
 }
