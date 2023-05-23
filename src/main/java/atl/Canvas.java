@@ -3,8 +3,12 @@ package atl;
 class Canvas {
     protected int x;
     protected int y;
+    protected int xMin;
+    protected int yMin;
+
     protected int xMax;
     protected int yMax;
+
     protected int generation;
     protected long timePerGeneration;
     protected long timeTotal;
@@ -14,9 +18,11 @@ class Canvas {
     protected int threadCount;
 
 
-    public Canvas(int x, int y, int xMax, int yMax) {
+    public Canvas(int x, int y, int xMin, int yMin, int xMax, int yMax) {
         this.x = x;
         this.y = y;
+        this.xMin = xMin;
+        this.yMin = yMin;
         this.xMax = xMax;
         this.yMax = yMax;
         this.generation = 0;
@@ -27,36 +33,20 @@ class Canvas {
         this.threadCount = 1;
     }
 
-    public int getX() {
-        return x;
+    public int getXMin() {
+        return xMin;
     }
 
-    public void setX(int x) {
-        this.x = x;
-    }
-
-    public int getY() {
-        return y;
-    }
-
-    public void setY(int y) {
-        this.y = y;
+    public int getYMin() {
+        return yMin;
     }
 
     public int getxMax() {
         return xMax;
     }
 
-    public void setxMax(int xMax) {
-        this.xMax = xMax;
-    }
-
     public int getyMax() {
         return yMax;
-    }
-
-    public void setyMax(int yMax) {
-        this.yMax = yMax;
     }
 
     public int getGeneration() {
@@ -105,5 +95,35 @@ class Canvas {
 
     public void setThreadCount(int threadCount) {
         this.threadCount = threadCount;
+    }
+
+    public void moveUp() {
+        if (xMin >= 10) {
+            xMin = xMin - 10;
+        }
+    }
+
+    public void moveDown() {
+        if (xMin <= x - xMax - 11) {
+            xMin = xMin + 10;
+        }
+        else {
+            xMin = x - xMax - 1;
+        }
+    }
+
+    public void moveLeft() {
+        if (yMin >= 10) {
+            yMin = yMin - 10;
+        }
+    }
+
+    public void moveRight() {
+        if (yMin <=  y - yMax - 11) {
+            yMin = yMin + 10;
+        }
+        else {
+            yMin = y - yMax - 1;
+        }
     }
 }

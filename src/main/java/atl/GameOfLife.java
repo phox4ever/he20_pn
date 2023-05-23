@@ -6,7 +6,8 @@ import java.util.concurrent.ForkJoinPool;
 
 public class GameOfLife {
 
-    final int TERMINAL_WIDTH = 140;
+    // Terminal size (check with `tput cols` and `tput lines` or `stty size` or 'mode con')
+    final int TERMINAL_WIDTH = 254;
     final int TERMINAL_HEIGHT = 38;
 
     protected Grid grid;
@@ -33,6 +34,7 @@ public class GameOfLife {
             System.exit(1);
         }
         GameOfLife game = new GameOfLife(Integer.parseInt(args[0]), Integer.parseInt(args[1]), Integer.parseInt(args[2]), Integer.parseInt(args[3]), Integer.parseInt(args[4]));
+        clearConsole(game.TERMINAL_HEIGHT);
         game.run();
 
     }
@@ -82,7 +84,9 @@ public class GameOfLife {
         long start = System.nanoTime();
         long time = start;
         long averageTimePerGeneration = 0;
-        Canvas canvas = new Canvas(0, 0, TERMINAL_HEIGHT * 2 - 2, highRes ? TERMINAL_WIDTH * 2 : TERMINAL_WIDTH);
+
+        Canvas canvas = new Canvas(grid.getX(), grid.getY(), 0, 0, TERMINAL_HEIGHT * 2 - 2, highRes ? TERMINAL_WIDTH * 2 : TERMINAL_WIDTH);
+        new UserInput(canvas);
         canvas.setThreadCount(threadCount);
         do {
             alive = countAlive();
@@ -149,14 +153,8 @@ public class GameOfLife {
 
     public StringBuffer renderMidRes(int x, int y, int maxX, int maxY) {
         int[][] grid = this.grid.getGrid();
-        for (int i = 0; i < this.grid.getX(); i = i + 2) {
-            if (i<x || i>=maxX) {
-                continue;
-            }
-            for (int j = 0; j < this.grid.getY(); j++) {
-                if (j<y || j>=maxY) {
-                    continue;
-                }
+        for (int i = x; i < x + maxX && i < this.grid.getX() ; i = i + 2) {
+            for (int j = y; j < y + maxY && j < this.grid.getY(); j++) {
                 //▀, ▄ or █
                 char c = ' ';
 
@@ -174,7 +172,7 @@ public class GameOfLife {
                 }
                 buffer.append(c);
             }
-            if (i < maxX - 2) {
+            if (i < x + maxX - 2 && i < this.grid.getX() - 2) {
                 buffer.append("\n");
             }
         }
@@ -183,14 +181,8 @@ public class GameOfLife {
 
     public StringBuffer renderHighRes(int x, int y, int maxX, int maxY) {
         int[][] grid = this.grid.getGrid();
-        for (int i = 0; i < this.grid.getX(); i = i + 2) {
-            if (i<x || i>=maxX) {
-                continue;
-            }
-            for (int j = 0; j < this.grid.getY(); j = j + 2) {
-                if (j<y || j>=maxY) {
-                    continue;
-                }
+        for (int i = x; i < x + maxX && i < this.grid.getX() ; i = i + 2) {
+            for (int j = y; j <= y + maxY && j < this.grid.getY(); j = j + 2) {
                 //▖	▗	▘	▙	▚	▛	▜	▝	▞	▟
                 char c = ' ';
                 //top left: ▘
@@ -255,7 +247,7 @@ public class GameOfLife {
                 }
                 buffer.append(c);
             }
-            if (i < maxX - 2) {
+            if (i < x + maxX - 2 && i < this.grid.getX() - 2) {
                 buffer.append("\n");
             }
         }
@@ -270,13 +262,13 @@ public class GameOfLife {
         }
         buffer.append("\033[H\033[3J");
         if (highRes) {
-            buffer = renderHighRes(canvas.getX(), canvas.getY(), canvas.getxMax(), canvas.getyMax());
+            buffer = renderHighRes(canvas.getXMin(), canvas.getYMin(), canvas.getxMax() - 2, canvas.getyMax());
         } else {
-            buffer = renderMidRes(canvas.getX(), canvas.getY(), canvas.getxMax(), canvas.getyMax());
+            buffer = renderMidRes(canvas.getXMin(), canvas.getYMin(), canvas.getxMax() - 2, canvas.getyMax());
         }
         buffer.append("\n\33[2K\r");
         buffer.append("Grid: ").append(grid.getX()).append("x").append(grid.getY())
-                .append(" (").append(canvas.getxMax()).append("x").append(canvas.getyMax()).append(")")
+                .append(" (x").append(canvas.getXMin()).append(":y").append(canvas.getYMin()).append("|").append(canvas.getxMax()).append("x").append(canvas.getyMax()).append(")")
                 .append("  Threads: ").append(canvas.getThreadCount())
                 .append("  Alive: ")
                 .append(canvas.getAlive())
@@ -288,8 +280,10 @@ public class GameOfLife {
                 .append(canvas.getTimeTotal())
                 .append("ms");
         if (canvas.isDead()) {
-            buffer.append("\n");
-            buffer.append("The grid is dead!");
+            buffer.append("\n\33[2K\rThe grid is dead! Press 'q+Enter' to quit: ");
+        }
+        else {
+            buffer.append("\n\33[2K\rMove using 'hjkl' or 'wsad' + Enter. Press 'q+Enter' to quit: ");
         }
         System.out.print(buffer);
     }
@@ -337,12 +331,13 @@ public class GameOfLife {
         }
     }
 
-    public static void clearConsole() {
+    public static void clearConsole(int rows) {
         try {
             if (System.getProperty("os.name").contains("Windows")) {
                 new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor();
             } else {
-                System.out.print("\033\143");
+                System.out.print("\33[2K\n".repeat(rows));
+                System.out.print("\033[H\033[2J");
             }
         } catch (IOException | InterruptedException ex) {
         }
