@@ -1,21 +1,19 @@
 package atl;
 
 class Canvas {
-    protected int x;
-    protected int y;
-    protected int xMin;
-    protected int yMin;
-
-    protected int xMax;
-    protected int yMax;
-
-    protected int generation;
-    protected long timePerGeneration;
-    protected long timeTotal;
-    protected int alive;
-    protected boolean dead;
-
-    protected int threadCount;
+    private final int x;
+    private final int y;
+    private int xMin;
+    private int yMin;
+    private final int xMax;
+    private final int yMax;
+    private int generation;
+    private long timePerGeneration;
+    private long averageTimePerGeneration;
+    private long timeTotal;
+    private int alive;
+    private boolean dead;
+    private int threadCount;
 
 
     public Canvas(int x, int y, int xMin, int yMin, int xMax, int yMax) {
@@ -27,6 +25,7 @@ class Canvas {
         this.yMax = yMax;
         this.generation = 0;
         this.timePerGeneration = 0;
+        this.averageTimePerGeneration = 0;
         this.timeTotal = 0;
         this.alive = 0;
         this.dead = false;
@@ -61,7 +60,18 @@ class Canvas {
         return timePerGeneration;
     }
 
+    public long getAverageTimePerGeneration() {
+        return averageTimePerGeneration;
+    }
+
     public void setTimePerGeneration(long timePerGeneration) {
+        // Calculate average time per generation, but only after 5 generations to avoid skewing the average.q
+        if (generation > 5) {
+            this.averageTimePerGeneration = (averageTimePerGeneration * generation + timePerGeneration) / (generation + 1);
+        }
+        else {
+            this.averageTimePerGeneration = timePerGeneration;
+        }
         this.timePerGeneration = timePerGeneration;
     }
 

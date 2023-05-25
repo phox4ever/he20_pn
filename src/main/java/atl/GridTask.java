@@ -49,7 +49,7 @@ class GridTask extends RecursiveTask {
     }
 
     protected Grid updateGrid(int lowerBound, int upperBound) {
-        for (int i = lowerBound; i <= upperBound; i++) {
+        for (int i = lowerBound; i <= upperBound && i < game.grid.getX(); i++) {
             for (int j = 0; j < game.grid.getY(); j++) {
                 workingGrid.setAlive(i, j, game.checkNeighbours(i, j));
             }
