@@ -13,7 +13,12 @@ class Canvas {
     private long timeTotal;
     private int alive;
     private boolean dead;
-    private int threadCount;
+    private int taskCount;
+    final public static int ZOOM_NEAREST = 3;
+    final public static int ZOOM_DEFAULT = 2;
+    final public static int ZOOM_FARTHEST = 1;
+    private int zoomLevel = ZOOM_DEFAULT;
+
 
 
     public Canvas(int x, int y, int xMin, int yMin, int xMax, int yMax) {
@@ -29,7 +34,7 @@ class Canvas {
         this.timeTotal = 0;
         this.alive = 0;
         this.dead = false;
-        this.threadCount = 1;
+        this.taskCount = 1;
     }
 
     public int getXMin() {
@@ -41,11 +46,21 @@ class Canvas {
     }
 
     public int getxMax() {
-        return xMax;
+        if (zoomLevel < ZOOM_NEAREST) {
+            return xMax;
+        } else {
+            return xMax / 2;
+        }
     }
 
     public int getyMax() {
-        return yMax;
+        if (zoomLevel == ZOOM_DEFAULT) {
+            return yMax;
+        } else if (zoomLevel == ZOOM_FARTHEST) {
+            return yMax * 2;
+        } else {
+            return yMax / 2 - 4;
+        }
     }
 
     public int getGeneration() {
@@ -99,17 +114,23 @@ class Canvas {
         this.dead = dead;
     }
 
-    public int getThreadCount() {
-        return threadCount;
+    public int getTaskCount() {
+        return taskCount;
     }
 
-    public void setThreadCount(int threadCount) {
-        this.threadCount = threadCount;
+    public void setTaskCount(int taskCount) {
+        this.taskCount = taskCount;
     }
 
+    public int getZoomLevel() {
+        return zoomLevel;
+    }
     public void moveUp() {
         if (xMin >= 10) {
             xMin = xMin - 10;
+        }
+        else {
+            xMin = 0;
         }
     }
 
@@ -118,14 +139,17 @@ class Canvas {
             xMin = xMin + 10;
         }
         else {
-            xMin = x - xMax - 1;
+            xMin = x - xMax + 1;
         }
     }
 
     public void moveLeft() {
         if (yMin >= 10) {
             yMin = yMin - 10;
+        } else {
+            yMin = 0;
         }
+
     }
 
     public void moveRight() {
@@ -134,6 +158,18 @@ class Canvas {
         }
         else {
             yMin = y - yMax - 1;
+        }
+    }
+
+    public void zoomIn() {
+        if (zoomLevel < ZOOM_NEAREST) {
+            zoomLevel++;
+        }
+    }
+
+    public void zoomOut() {
+        if (zoomLevel > ZOOM_FARTHEST) {
+            zoomLevel--;
         }
     }
 }

@@ -24,6 +24,7 @@ public class UserInput implements Runnable {
                 char c = (char) br.read();
                 if (c == 'q') {
                     System.exit(0);
+                    break;
                 }
                 if (c == 'k' || c == 'w') {
                     canvas.moveUp();
@@ -36,6 +37,12 @@ public class UserInput implements Runnable {
                 }
                 if (c == 'l' || c == 'd') {
                     canvas.moveRight();
+                }
+                if (c == 'i') {
+                    canvas.zoomIn();
+                }
+                if (c == 'o') {
+                    canvas.zoomOut();
                 }
             } catch (IOException e) {
                 throw new RuntimeException(e);

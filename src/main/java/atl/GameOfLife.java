@@ -41,15 +41,13 @@ public class GameOfLife {
 
     protected int sleepInterval = 100;
 
-    protected int threadCount = 1;
-
-    protected boolean highRes = false;
+    protected int subTaskCount = 1;
 
 
     public static void main(String[] args) throws InterruptedException {
         GameOfLife game;
         if (args.length > 0 && args.length < 5) {
-            System.out.println("Usage: java GameOfLife <x> <y> <renderInterval> <sleepInterval> <threadCount>");
+            System.out.println("Usage: java GameOfLife <x> <y> <renderInterval> <sleepInterval> <numberOfSubtasks>");
             System.exit(1);
         }
         if (args.length == 0) {
@@ -92,13 +90,13 @@ public class GameOfLife {
      * @param y              height of the grid
      * @param renderInterval number of generations to skip before rendering
      * @param sleepInterval  time to sleep between generations
-     * @param threadCount    number of threads to use
+     * @param subTaskCount    number of tasks to use
      */
-    public GameOfLife(int x, int y, int renderInterval, int sleepInterval, int threadCount) {
+    public GameOfLife(int x, int y, int renderInterval, int sleepInterval, int subTaskCount) {
         this(x, y);
         this.renderInterval = renderInterval;
         this.sleepInterval = sleepInterval;
-        this.threadCount = threadCount;
+        this.subTaskCount = subTaskCount;
     }
 
 
@@ -148,9 +146,9 @@ public class GameOfLife {
         long timePerGeneration = 0;
 
         // Create a canvas to draw on
-        Canvas canvas = new Canvas(grid.getX(), grid.getY(), 0, 0, TERMINAL_HEIGHT * 2 - 2, highRes ? TERMINAL_WIDTH * 2 : TERMINAL_WIDTH);
+        Canvas canvas = new Canvas(grid.getX(), grid.getY(), 0, 0, TERMINAL_HEIGHT * 2 - 2, TERMINAL_WIDTH);
         // Set the number of threads used to compute the next generation so that the canvas can display it
-        canvas.setThreadCount(threadCount);
+        canvas.setTaskCount(subTaskCount);
 
         // Create a user input handler
         new UserInput(canvas);
@@ -158,17 +156,17 @@ public class GameOfLife {
         // Loop until all cells are dead or the user presses 'q'
         do {
             alive = countAlive();
+            canvas.setGeneration(generation);
+            canvas.setTimePerGeneration(timePerGeneration);
             // Draw the grid at the given interval
             if (renderInterval > 0 && generation % renderInterval == 0) {
-                canvas.setGeneration(generation);
-                canvas.setTimePerGeneration(timePerGeneration);
                 canvas.setTimeTotal((int) ((System.nanoTime() - start) / 1000000L));
                 canvas.setAlive(alive);
                 drawGrid(canvas);
             }
             // Compute the next generation
             time = System.nanoTime();
-            if (threadCount == 1) {
+            if (subTaskCount == 1) {
                 workingGrid = executeTaskSerial(workingGrid);
             } else {
                 workingGrid = excecuteTaskParallel(workingGrid);
@@ -200,7 +198,7 @@ public class GameOfLife {
      */
     private Grid excecuteTaskParallel(Grid workingGrid) {
         ForkJoinPool pool = ForkJoinPool.commonPool();
-        workingGrid = (Grid) pool.invoke(new GridTask(this, 0, grid.getX(), grid.getX() / threadCount, workingGrid));
+        workingGrid = (Grid) pool.invoke(new GridTask(this, 0, grid.getX(), grid.getX() / subTaskCount, workingGrid));
         workingGrid = grid.swapGrid(workingGrid);
         return workingGrid;
     }
@@ -233,7 +231,7 @@ public class GameOfLife {
 
     /**
      * Print the grid to the console in low resolution mode
-     * <p>
+     *
      * This uses two unicode block characters to represent each cell.
      *
      * @param x    the x coordinate of the top left corner of the pattern
@@ -243,21 +241,18 @@ public class GameOfLife {
      * @return a string buffer containing the rendered grid
      */
     public StringBuffer renderLowRes(int x, int y, int maxX, int maxY) {
-        int rows = 0;
-        int columns = 0;
-        for (int[] row : grid.getGrid()) {
-            rows++;
-            if (rows < x || rows >= maxX) {
-                continue;
-            }
-            for (int cell : row) {
-                columns++;
-                if (columns < y || columns >= maxY) {
-                    continue;
+        int[][] grid = this.grid.getGrid();
+        for (int i = x; i < x + maxX && i < this.grid.getX(); i++) {
+            for (int j = y; j < y + maxY && j < this.grid.getY(); j++) {
+                // only ██ or none
+                char c = ' ';
+                //middle: ██
+                if (grid[i][j] == 1) {
+                    c = '\u2588';
                 }
-                buffer.append(cell == 1 ? "\u2588\u2588" : "  ");
+                buffer.append(c).append(c);
             }
-            if (rows < grid.getX() - 1) {
+            if (i < x + maxX - 1 && i < this.grid.getX() - 1) {
                 buffer.append("\n");
             }
         }
@@ -402,15 +397,17 @@ public class GameOfLife {
             buffer.delete(0, buffer.length());
         }
         buffer.append("\033[H\033[3J");
-        if (highRes) {
-            buffer = renderHighRes(canvas.getXMin(), canvas.getYMin(), canvas.getxMax() - 2, canvas.getyMax());
+        if (canvas.getZoomLevel() > Canvas.ZOOM_DEFAULT) {
+            buffer.append(renderLowRes(canvas.getXMin(), canvas.getYMin(), canvas.getxMax() - 2, canvas.getyMax()));
+        } else if (canvas.getZoomLevel() == Canvas.ZOOM_DEFAULT) {
+            buffer.append(renderMidRes(canvas.getXMin(), canvas.getYMin(), canvas.getxMax() - 2, canvas.getyMax()));
         } else {
-            buffer = renderMidRes(canvas.getXMin(), canvas.getYMin(), canvas.getxMax() - 2, canvas.getyMax());
+            buffer.append(renderHighRes(canvas.getXMin(), canvas.getYMin(), canvas.getxMax() - 2, canvas.getyMax()));
         }
         buffer.append("\n\33[2K\r");
         buffer.append("Grid: ").append(grid.getX()).append("x").append(grid.getY())
                 .append(" (x").append(canvas.getXMin()).append(":y").append(canvas.getYMin()).append("|").append(canvas.getxMax()).append("x").append(canvas.getyMax()).append(")")
-                .append("  Threads: ").append(canvas.getThreadCount())
+                .append("  Subtasks: ").append(canvas.getTaskCount())
                 .append("  Alive: ")
                 .append(canvas.getAlive())
                 .append("  Generations: ")
@@ -421,11 +418,13 @@ public class GameOfLife {
                 .append(canvas.getAverageTimePerGeneration())
                 .append("us/gen)  Time elapsed: ")
                 .append(canvas.getTimeTotal())
-                .append("ms");
+                .append("ms")
+                .append("  Pool Size: ")
+                .append(subTaskCount > 1 ? ForkJoinPool.commonPool().getPoolSize() : 1);
         if (canvas.isDead()) {
             buffer.append("\n\33[2K\rThe grid is dead! Press 'q+Enter' to quit: ");
         } else {
-            buffer.append("\n\33[2K\rMove using 'hjkl' or 'wsad' + Enter. Press 'q+Enter' to quit: ");
+            buffer.append("\n\33[2K\rMove: 'hjkl' or 'wsad' Zoom: 'i/o' Quit: 'q' ** Press ENTER to confirm: ");
         }
         System.out.print(buffer);
     }
