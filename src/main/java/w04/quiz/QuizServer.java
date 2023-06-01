@@ -5,9 +5,39 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 public class QuizServer {
     public static void main(String[] args) {
+        String[] questions = {
+                "Wie heißt die Hauptstadt von Deutschland?",
+                "Wie heißt die Hauptstadt von Frankreich?",
+                "Wie heißt die Hauptstadt von Italien?",
+                "Wie heißt die Hauptstadt von Spanien?",
+                "Wie heißt die Hauptstadt von Österreich?",
+                "Wie heißt die Hauptstadt von Polen?",
+                "Wie heißt die Hauptstadt von Tschechien?",
+                "Wie heißt die Hauptstadt von Ungarn?",
+                "Wie heißt die Hauptstadt von der Schweiz?",
+                "Wie heißt die Hauptstadt von den Niederlanden?"
+        };
+
+        String[][] answers = {
+                {"Berlin", "Hamburg", "München", "Köln"},
+                {"Paris", "Lyon", "Marseille", "Toulouse"},
+                {"Rom", "Mailand", "Neapel", "Turin"},
+                {"Madrid", "Barcelona", "Valencia", "Sevilla"},
+                {"Wien", "Graz", "Linz", "Salzburg"},
+                {"Warschau", "Krakau", "Lodz", "Breslau"},
+                {"Prag", "Brünn", "Ostrau", "Pilsen"},
+                {"Budapest", "Debrecen", "Szeged", "Miskolc"},
+                {"Bern", "Genf", "Basel", "Zürich"},
+                {"Amsterdam", "Rotterdam", "Den Haag", "Utrecht"}
+        };
+
         try {
             ServerSocket serverSocket = new ServerSocket(3141);
             System.out.println("Server gestartet. Warte auf Verbindungen...");
@@ -15,31 +45,31 @@ public class QuizServer {
             while (true) {
                 Socket clientSocket = serverSocket.accept();
                 System.out.println("Client verbunden: " + clientSocket.getInetAddress().getHostAddress());
-
-                // Frage und Antworten erstellen
-                String question = "Welches Protokoll verliert keine Pakete?";
-                String[] answers = {"TCP", "UDP", "IP"};
-
-                // Frage und Antworten an den Client senden
                 ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream());
-                out.writeObject(question);
-                out.writeObject(answers);
-
-                // Antwort des Clients empfangen
                 ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
-                String clientAnswer = (String) in.readObject();
+                for (int i = 0; i < questions.length; i++) {
+                    // Frage und Antworten an den Client senden
 
-                // Antwort überprüfen und Quittung an den Client senden
-                String correctAnswer = "TCP";
-                String response;
-                if (clientAnswer.equals(correctAnswer)) {
-                    response = "Richtige Antwort!";
-                } else {
-                    response = "Falsche Antwort!";
+                    String[] shuffled = Arrays.copyOf(answers[i], answers[i].length);
+                    List<String> answersShuffled = Arrays.asList(shuffled);
+                    Collections.shuffle(answersShuffled);
+
+                    out.writeObject(questions[i]);
+                    out.writeObject(shuffled);
+                    // Antwort vom Client empfangen und auswerten
+
+                    String clientAnswer = (String) in.readObject();
+                    String response;
+                    if (clientAnswer.equals(answers[i][0])) {
+                        response = "Richtig!";
+                    } else {
+                        response = "Falsch!";
+                    }
+                    System.out.println("Client: " + clientAnswer + " - " + response);
+
+                    // Quittung an den Client senden
+                    out.writeObject(response);
                 }
-                out.writeObject(response);
-
-                // Verbindungen schließen
                 in.close();
                 out.close();
                 clientSocket.close();
