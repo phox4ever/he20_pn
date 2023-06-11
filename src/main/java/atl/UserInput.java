@@ -8,10 +8,13 @@ import static java.lang.Thread.sleep;
 
 public class UserInput implements Runnable {
 
-    protected Canvas canvas;
+    private Canvas canvas;
 
-    public UserInput(Canvas canvas) {
+    private GameOfLife game;
+
+    public UserInput(Canvas canvas, GameOfLife game) {
         this.canvas = canvas;
+        this.game = game;
         Thread t = new Thread(this);
         t.start();
     }
@@ -43,6 +46,10 @@ public class UserInput implements Runnable {
                 }
                 if (c == 'o') {
                     canvas.zoomOut();
+                }
+                if (c > '0' && c <= '9') {
+                    game.setSubTaskCount(c - '0');
+                    canvas.setTaskCount(c - '0');
                 }
             } catch (IOException e) {
                 throw new RuntimeException(e);

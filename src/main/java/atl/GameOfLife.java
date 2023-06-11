@@ -1,6 +1,7 @@
 package atl;
 
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 
@@ -40,6 +41,10 @@ public class GameOfLife {
     protected int renderInterval = 1;
 
     protected int sleepInterval = 100;
+
+    public void setSubTaskCount(int subTaskCount) {
+        this.subTaskCount = subTaskCount;
+    }
 
     protected int subTaskCount = 1;
 
@@ -143,7 +148,7 @@ public class GameOfLife {
         int kill = 0;
         long start = System.nanoTime();
         long time;
-        long timePerGeneration = 0;
+        double timePerGeneration = 0;
 
         // Create a canvas to draw on
         Canvas canvas = new Canvas(grid.getX(), grid.getY(), 0, 0, TERMINAL_HEIGHT * 2 - 2, TERMINAL_WIDTH);
@@ -151,13 +156,13 @@ public class GameOfLife {
         canvas.setTaskCount(subTaskCount);
 
         // Create a user input handler
-        new UserInput(canvas);
+        new UserInput(canvas, this);
 
         // Loop until all cells are dead or the user presses 'q'
         do {
             alive = countAlive();
             canvas.setGeneration(generation);
-            canvas.setTimePerGeneration(timePerGeneration);
+            canvas.setTimePerGeneration(timePerGeneration, renderInterval * 100);
             // Draw the grid at the given interval
             if (renderInterval > 0 && generation % renderInterval == 0) {
                 canvas.setTimeTotal((int) ((System.nanoTime() - start) / 1000000L));
@@ -171,7 +176,7 @@ public class GameOfLife {
             } else {
                 workingGrid = excecuteTaskParallel(workingGrid);
             }
-            timePerGeneration = (System.nanoTime() - time) / 1000L;
+            timePerGeneration = (System.nanoTime() - time) / 1000000D;
             // Sleep for the given interval
             try {
                 sleep(sleepInterval);
@@ -413,13 +418,12 @@ public class GameOfLife {
                 .append("  Generations: ")
                 .append(canvas.getGeneration())
                 .append(" (")
-                .append(canvas.getTimePerGeneration())
-                .append("us/gen avg: ")
-                .append(canvas.getAverageTimePerGeneration())
-                .append("us/gen)  Time elapsed: ")
-                .append(canvas.getTimeTotal())
-                .append("ms")
-                .append("  Pool Size: ")
+                .append(new DecimalFormat("######0.00").format(canvas.getTimePerGeneration()))
+                .append("ms/gen avg: ")
+                .append(new DecimalFormat("######0.00").format(canvas.getAverageTimePerGeneration()))
+                .append("ms/gen)  Time elapsed: ")
+                .append(canvas.getTimeTotalString())
+                .append("  Max threads: ")
                 .append(subTaskCount > 1 ? ForkJoinPool.commonPool().getPoolSize() : 1);
         if (canvas.isDead()) {
             buffer.append("\n\33[2K\rThe grid is dead! Press 'q+Enter' to quit: ");

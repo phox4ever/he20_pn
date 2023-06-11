@@ -8,8 +8,8 @@ class Canvas {
     private final int xMax;
     private final int yMax;
     private int generation;
-    private long timePerGeneration;
-    private long averageTimePerGeneration;
+    private double timePerGeneration;
+    private double averageTimePerGeneration;
     private long timeTotal;
     private int alive;
     private boolean dead;
@@ -18,8 +18,6 @@ class Canvas {
     final public static int ZOOM_DEFAULT = 2;
     final public static int ZOOM_FARTHEST = 1;
     private int zoomLevel = ZOOM_DEFAULT;
-
-
 
     public Canvas(int x, int y, int xMin, int yMin, int xMax, int yMax) {
         this.x = x;
@@ -46,10 +44,12 @@ class Canvas {
     }
 
     public int getxMax() {
-        if (zoomLevel < ZOOM_NEAREST) {
+        if (zoomLevel == ZOOM_FARTHEST) {
+            return xMax;
+        } else if (zoomLevel == ZOOM_DEFAULT) {
             return xMax;
         } else {
-            return xMax / 2;
+            return xMax / 2 + 1;
         }
     }
 
@@ -71,18 +71,19 @@ class Canvas {
         this.generation = generation;
     }
 
-    public long getTimePerGeneration() {
+    public double getTimePerGeneration() {
         return timePerGeneration;
     }
 
-    public long getAverageTimePerGeneration() {
+    public double getAverageTimePerGeneration() {
         return averageTimePerGeneration;
     }
 
-    public void setTimePerGeneration(long timePerGeneration) {
-        // Calculate average time per generation, but only after 5 generations to avoid skewing the average.q
+    public void setTimePerGeneration(double timePerGeneration, int range) {
+        int delta = Math.min(generation, range);
+        // Calculate average time per generation, but only after 5 generations to avoid skewing the average.
         if (generation > 5) {
-            this.averageTimePerGeneration = (averageTimePerGeneration * generation + timePerGeneration) / (generation + 1);
+            this.averageTimePerGeneration = (averageTimePerGeneration * delta + timePerGeneration) / (delta + 1);
         }
         else {
             this.averageTimePerGeneration = timePerGeneration;
@@ -92,6 +93,13 @@ class Canvas {
 
     public long getTimeTotal() {
         return timeTotal;
+    }
+
+    public String getTimeTotalString() {
+        if (timeTotal > 10000) {
+            return timeTotal / 1000 + "s";
+        }
+        return timeTotal + "ms";
     }
 
     public void setTimeTotal(long timeTotal) {
