@@ -1,5 +1,11 @@
 package atl;
 
+/**
+ * ArrayGrid class
+ *
+ * @version 1.0
+ * @author philipp.martin@hf-ict.info
+ */
 class ArrayGrid implements Grid {
     public int[][] grid;
     public int x;
@@ -31,13 +37,16 @@ class ArrayGrid implements Grid {
         return grid;
     }
 
+    @Override
     public void setAlive(int x, int y, boolean alive) {
         grid[x][y] = alive ? 1 : 0;
     }
 
+    @Override
     public void setGrid(int[][] grid) {
         this.grid = grid;
     }
+
     @Override
     public Grid swapGrid(Grid grid) {
         int[][] swap = this.grid;

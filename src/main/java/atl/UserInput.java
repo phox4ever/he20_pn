@@ -4,8 +4,12 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
-import static java.lang.Thread.sleep;
-
+/**
+ * UserInput is a Runnable that is used to read user input from the console.
+ *
+ * @version 1.0
+ * @author philipp.martin@hf-ict.info
+ */
 public class UserInput implements Runnable {
 
     private Canvas canvas;

@@ -1,9 +1,14 @@
 package atl;
 
-import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+/**
+ * MapGrid is a Grid implementation that uses a ConcurrentHashMap to store the grid.
+ *
+ * @version 1.0
+ * @author philipp.martin@hf-ict.info
+ */
 public class MapGrid implements Grid {
     protected ConcurrentMap<Integer, int[]> grid;
     protected int x;
@@ -51,7 +56,7 @@ public class MapGrid implements Grid {
         return grid;
     }
 
-
+    @Override
     public void setAlive(int x, int y, boolean alive) {
         grid.get(x)[y] = alive ? 1 : 0;
     }

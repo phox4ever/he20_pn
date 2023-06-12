@@ -141,7 +141,6 @@ public class GameOfLife {
 
         // Initialize the the working grid
         Grid workingGrid = new ArrayGrid(grid.getX(), grid.getY());
-        //Grid workingGrid = new MapGrid(grid.getX(), grid.getY());
 
         int generation = 0;
         int alive;
@@ -527,9 +526,11 @@ public class GameOfLife {
     }
 
     /**
-     * @param grid
-     * @param x
-     * @param y
+     * Spawns a glider gun on the grid.
+     *
+     * @param grid the grid to spawn the glider gun on
+     * @param x    the x coordinate of the top left corner of the glider gun
+     * @param y    the y coordinate of the top left corner of the glider gun
      */
     public static void spawnGliderGun(int[][] grid, int x, int y) {
         grid[x + 5][y + 1] = 1;
@@ -572,9 +573,11 @@ public class GameOfLife {
 
 
     /**
-     * @param grid
-     * @param x
-     * @param y
+     * Spawns a pulsar on the grid.
+     *
+     * @param grid the grid to spawn the pulsar on
+     * @param x    the x coordinate of the top left corner of the pulsar
+     * @param y    the y coordinate of the top left corner of the pulsar
      */
     public static void spawnPulsar(int[][] grid, int x, int y) {
         grid[x + 2][y + 4] = 1;
@@ -628,8 +631,10 @@ public class GameOfLife {
     }
 
     /**
-     * @param grid
-     * @return
+     * Mirrors the grid across the x and y axis.
+     *
+     * @param grid the grid to mirror
+     * @return the mirrored grid
      */
     public static int[][] mirrorGrid(int[][] grid) {
         int[][] newGrid = new int[grid.length][grid[0].length];
@@ -640,10 +645,12 @@ public class GameOfLife {
     }
 
     /**
-     * @param grid
-     * @param x
-     * @param y
-     * @return
+     * Moves the grid by x and y.
+     *
+     * @param grid the grid to move
+     * @param x    the x coordinate to move the grid by
+     * @param y    the y coordinate to move the grid by
+     * @return the moved grid
      */
     public static int[][] moveGrid(int[][] grid, int x, int y) {
         int[][] newGrid = new int[grid.length][grid[0].length];

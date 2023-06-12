@@ -5,6 +5,12 @@ import java.util.List;
 import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.RecursiveTask;
 
+/**
+ * GridTask is a RecursiveTask that is used to calculate the next generation of a grid.
+ *
+ * @version 1.0
+ * @author philipp.martin@hf-ict.info
+ */
 class GridTask extends RecursiveTask {
     private final GameOfLife game;
     protected int lowerBound;
@@ -34,6 +40,11 @@ class GridTask extends RecursiveTask {
         this(game, lowerBound, upperBound, 100, workingGrid);
     }
 
+    /**
+     * Generates a list of subtasks.
+     *
+     * @return a list of subtasks
+     */
     private List<GridTask> subTasks() {
         List<GridTask> subTasks = new ArrayList<>();
 
@@ -48,6 +59,13 @@ class GridTask extends RecursiveTask {
         return subTasks;
     }
 
+    /**
+     * Updates the grid.
+     *
+     * @param lowerBound the lower bound
+     * @param upperBound the upper bound
+     * @return the updated grid
+     */
     protected Grid updateGrid(int lowerBound, int upperBound) {
         for (int i = lowerBound; i <= upperBound && i < game.grid.getX(); i++) {
             for (int j = 0; j < game.grid.getY(); j++) {
@@ -57,10 +75,20 @@ class GridTask extends RecursiveTask {
         return workingGrid;
     }
 
+    /**
+     * Gets the working grid.
+     *
+     * @return the working grid
+     */
     public Grid getWorkingGrid() {
         return workingGrid;
     }
 
+    /**
+     * Computes the next generation of the grid.
+     *
+     * @return the working grid
+     */
     @Override
     protected Object compute() {
         if (((upperBound + 1) - lowerBound) > granularity) {
